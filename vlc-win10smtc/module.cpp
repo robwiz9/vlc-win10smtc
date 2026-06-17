@@ -71,6 +71,7 @@ struct intf_sys_t
         playlist{ pl_Get(intf) },
         input{ nullptr },
         advertise{ false },
+        state_changed{ false },
         metadata_advertised{ false },
         position{ -1 },
         length{ -1 }
@@ -291,6 +292,8 @@ struct intf_sys_t
 
     bool advertise;
     bool metadata_advertised; // was the last song advertised to Windows?
+    bool state_changed;
+
 };
 
 int InputEvent(vlc_object_t* object, char const* cmd,
@@ -313,10 +316,12 @@ int InputEvent(vlc_object_t* object, char const* cmd,
 
         if (newval.i_int == INPUT_EVENT_STATE) {
             sys->advertise = true;
+            sys->state_changed = true;
             sys->input_state = (input_state_e)var_GetInteger(input, "state");
             sys->seekable = var_GetBool(input, "can-seek");
         } else if (newval.i_int == INPUT_EVENT_LENGTH) {
             sys->length = var_GetInteger(input, "length");
+            sys->advertise = true;
         } else if (newval.i_int == INPUT_EVENT_POSITION) {
             sys->position = var_GetInteger(input, "time");
             sys->advertise = true;
@@ -375,7 +380,11 @@ void* Thread(void* handle)
 
         canc = vlc_savecancel();
 
-        sys->AdvertiseState();
+        if (sys->state_changed) {
+            sys->AdvertiseState();
+            sys->state_changed = false;
+        }
+
         if (sys->input_state >= PLAYING_S && !sys->metadata_advertised) {
             sys->ReadAndAdvertiseMetadata();
             sys->metadata_advertised = true;

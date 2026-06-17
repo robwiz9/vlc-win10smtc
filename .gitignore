@@ -8,6 +8,8 @@
 /x32
 # VLC SDK
 sdk/
+*.zip
+*.dll
 
 # User-specific files
 *.rsuser
